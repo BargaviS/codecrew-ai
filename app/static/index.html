@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeCrew AI</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0f1117;color:#e0e0e0;height:100vh;display:flex;flex-direction:column}
+.header{background:#1a1d27;border-bottom:1px solid #2a2d3a;padding:16px 24px;display:flex;align-items:center;gap:12px}
+.logo{width:40px;height:40px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:white}
+.header h1{font-size:18px;font-weight:700;color:#fff}
+.header p{font-size:12px;color:#6b7280;margin-top:2px}
+.badge{margin-left:auto;background:#1e2035;border:1px solid #374151;border-radius:6px;padding:4px 10px;font-size:11px;color:#6366f1;font-weight:500}
+.main{display:flex;flex:1;overflow:hidden}
+.sidebar{width:320px;background:#1a1d27;border-right:1px solid #2a2d3a;display:flex;flex-direction:column;padding:20px;gap:14px;overflow-y:auto}
+.stitle{font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.08em}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group label{font-size:12px;color:#9ca3af}
+.form-group textarea{background:#0f1117;border:1px solid #2a2d3a;border-radius:8px;padding:10px 12px;color:#e0e0e0;font-size:13px;resize:vertical;min-height:100px;outline:none;font-family:inherit}
+.form-group textarea:focus{border-color:#6366f1}
+.form-group select{background:#0f1117;border:1px solid #2a2d3a;border-radius:8px;padding:10px 12px;color:#e0e0e0;font-size:13px;outline:none}
+.run-btn{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;width:100%}
+.run-btn:disabled{background:#1f2937;color:#4b5563;cursor:not-allowed}
+.divider{height:1px;background:#2a2d3a}
+.agent-list{display:flex;flex-direction:column;gap:8px}
+.agent-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;background:#0f1117;border:1px solid #2a2d3a;transition:all .3s}
+.agent-item.active{border-color:#6366f1;background:#13152a}
+.agent-item.done{border-color:#10b981;background:#052e16}
+.agent-item.error{border-color:#ef4444;background:#2d0a0a}
+.agent-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.agent-name{font-size:13px;font-weight:600;color:#e0e0e0}
+.agent-status{font-size:11px;color:#6b7280;margin-top:2px}
+.spinner{width:16px;height:16px;border:2px solid #374151;border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite;margin-left:auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.scores{display:flex;gap:8px}
+.score-card{flex:1;background:#0f1117;border:1px solid #2a2d3a;border-radius:8px;padding:10px;text-align:center}
+.score-num{font-size:24px;font-weight:700;color:#6366f1}
+.score-label{font-size:11px;color:#6b7280;margin-top:2px}
+.chat-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{padding:12px 20px;border-bottom:1px solid #2a2d3a;display:flex;justify-content:space-between;align-items:center;background:#1a1d27}
+.topbar span{font-size:12px;color:#6b7280}
+.topbar span.running{color:#a5b4fc}
+.topbar span.done{color:#4ade80}
+.messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px}
+.event{display:flex;gap:10px;padding:12px 14px;border-radius:10px;border:1px solid #2a2d3a;background:#1a1d27;font-size:13px}
+.event.start{border-color:#374151}
+.event.done{border-color:#10b981;background:#052e16}
+.event.error{border-color:#ef4444;background:#2d0a0a}
+.event.completed{border-color:#6366f1;background:#1e1b4b}
+.ev-icon{font-size:18px;flex-shrink:0}
+.ev-agent{font-weight:600;color:#a5b4fc;font-size:12px}
+.ev-msg{color:#e0e0e0;margin-top:2px}
+.result-area{border-top:1px solid #2a2d3a;padding:16px 20px;background:#1a1d27;max-height:300px;overflow-y:auto}
+.result-tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.tab{background:#0f1117;border:1px solid #374151;border-radius:6px;padding:5px 12px;font-size:12px;color:#9ca3af;cursor:pointer}
+.tab.active{border-color:#6366f1;color:#a5b4fc;background:#1e1b4b}
+.result-content{background:#0f1117;border:1px solid #2a2d3a;border-radius:8px;padding:14px;font-size:12px;font-family:monospace;white-space:pre-wrap;color:#e0e0e0;max-height:200px;overflow-y:auto;display:none}
+.result-content.active{display:block}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">CC</div>
+  <div>
+    <h1>CodeCrew AI</h1>
+    <p>5 specialized AI agents that plan, code, review, test and document your software</p>
+  </div>
+  <div class="badge">Multi-Agent System</div>
+</div>
+<div class="main">
+  <div class="sidebar">
+    <div class="stitle">Your Requirement</div>
+    <div class="form-group">
+      <label>Describe what you want to build</label>
+      <textarea id="req" placeholder="Example: Build a REST API for user authentication with JWT tokens, registration, login and logout endpoints"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Language</label>
+      <select id="lang">
+        <option value="python">Python</option>
+        <option value="javascript">JavaScript</option>
+        <option value="typescript">TypeScript</option>
+        <option value="sql">SQL</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Framework (optional)</label>
+      <input type="text" id="framework" placeholder="e.g. FastAPI, Express, Django" style="background:#0f1117;border:1px solid #2a2d3a;border-radius:8px;padding:10px 12px;color:#e0e0e0;font-size:13px;outline:none;width:100%">
+    </div>
+    <button class="run-btn" id="runBtn" onclick="runAgents()">🚀 Run All 5 Agents</button>
+    <div class="divider"></div>
+    <div class="stitle">Agent Pipeline</div>
+    <div class="agent-list" id="agentList">
+      <div class="agent-item" id="agent-Planner">
+        <div class="agent-icon">🗺️</div>
+        <div><div class="agent-name">Planner</div><div class="agent-status" id="status-Planner">Waiting...</div></div>
+      </div>
+      <div class="agent-item" id="agent-Coder">
+        <div class="agent-icon">💻</div>
+        <div><div class="agent-name">Coder</div><div class="agent-status" id="status-Coder">Waiting...</div></div>
+      </div>
+      <div class="agent-item" id="agent-Reviewer">
+        <div class="agent-icon">🔍</div>
+        <div><div class="agent-name">Reviewer</div><div class="agent-status" id="status-Reviewer">Waiting...</div></div>
+      </div>
+      <div class="agent-item" id="agent-Tester">
+        <div class="agent-icon">🧪</div>
+        <div><div class="agent-name">Tester</div><div class="agent-status" id="status-Tester">Waiting...</div></div>
+      </div>
+      <div class="agent-item" id="agent-Documenter">
+        <div class="agent-icon">📝</div>
+        <div><div class="agent-name">Documenter</div><div class="agent-status" id="status-Documenter">Waiting...</div></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="stitle">Quality Scores</div>
+    <div class="scores">
+      <div class="score-card"><div class="score-num" id="initScore">-</div><div class="score-label">Initial</div></div>
+      <div class="score-card"><div class="score-num" id="finalScore">-</div><div class="score-label">Final</div></div>
+      <div class="score-card"><div class="score-num" id="rounds">-</div><div class="score-label">Rounds</div></div>
+    </div>
+  </div>
+  <div class="chat-area">
+    <div class="topbar">
+      <span id="statusBar">Enter your requirement and click Run</span>
+    </div>
+    <div class="messages" id="messages"></div>
+    <div class="result-area" id="resultArea" style="display:none">
+      <div class="result-tabs" id="resultTabs"></div>
+      <div id="resultContents"></div>
+    </div>
+  </div>
+</div>
+<script>
+var sessionId = null;
+
+async function runAgents() {
+  var req = document.getElementById("req").value.trim();
+  if (!req) { alert("Please enter a requirement"); return; }
+
+  var btn = document.getElementById("runBtn");
+  btn.disabled = true;
+  btn.textContent = "Running...";
+  document.getElementById("messages").innerHTML = "";
+  document.getElementById("resultArea").style.display = "none";
+  document.getElementById("statusBar").textContent = "Creating session...";
+  document.getElementById("statusBar").className = "running";
+
+  // Reset agents
+  ["Planner","Coder","Reviewer","Tester","Documenter"].forEach(function(a) {
+    setAgent(a, "waiting", "Waiting...");
+  });
+
+  // Create session
+  var res = await fetch("/session", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      requirement: req,
+      language: document.getElementById("lang").value,
+      framework: document.getElementById("framework").value || null
+    })
+  });
+  var data = await res.json();
+  sessionId = data.session_id;
+
+  document.getElementById("statusBar").textContent = "Session " + sessionId + " — Agents running...";
+
+  // Stream events
+  var url = "/session/" + sessionId + "/stream?requirement=" + encodeURIComponent(req) +
+    "&language=" + document.getElementById("lang").value +
+    "&framework=" + encodeURIComponent(document.getElementById("framework").value || "");
+
+  var evtSource = new EventSource(url);
+
+  evtSource.onmessage = function(e) {
+    var event = JSON.parse(e.data);
+
+    if (event.event_type === "done") {
+      evtSource.close();
+      btn.disabled = false;
+      btn.textContent = "🚀 Run All 5 Agents";
+      loadResult();
+      return;
+    }
+
+    if (event.event_type === "completed") {
+      document.getElementById("statusBar").textContent = "✅ All agents completed!";
+      document.getElementById("statusBar").className = "done";
+      var d = event.data;
+      document.getElementById("initScore").textContent = d.initial_quality_score || "-";
+      document.getElementById("finalScore").textContent = d.final_quality_score || "-";
+      document.getElementById("rounds").textContent = d.total_review_rounds || "-";
+    }
+
+    if (event.event_type === "agent_start") {
+      setAgent(event.agent, "active", event.message);
+      addEvent("start", event.agent, event.message);
+    }
+
+    if (event.event_type === "agent_done") {
+      setAgent(event.agent, "done", event.message);
+      addEvent("done", event.agent, event.message);
+    }
+
+    if (event.event_type === "error") {
+      setAgent(event.agent, "error", "Failed");
+      addEvent("error", event.agent, event.message);
+      document.getElementById("statusBar").textContent = "❌ Pipeline failed";
+      evtSource.close();
+      btn.disabled = false;
+      btn.textContent = "🚀 Run All 5 Agents";
+    }
+  };
+
+  evtSource.onerror = function() {
+    evtSource.close();
+    btn.disabled = false;
+    btn.textContent = "🚀 Run All 5 Agents";
+  };
+}
+
+function setAgent(name, state, msg) {
+  var el = document.getElementById("agent-" + name);
+  var st = document.getElementById("status-" + name);
+  el.className = "agent-item " + (state === "waiting" ? "" : state);
+  st.textContent = msg;
+
+  // Remove old spinner
+  var old = el.querySelector(".spinner");
+  if (old) old.remove();
+
+  if (state === "active") {
+    var sp = document.createElement("div");
+    sp.className = "spinner";
+    el.appendChild(sp);
+  }
+}
+
+function addEvent(type, agent, msg) {
+  var msgs = document.getElementById("messages");
+  var icons = {Planner:"🗺️", Coder:"💻", Reviewer:"🔍", Tester:"🧪", Documenter:"📝"};
+  var div = document.createElement("div");
+  div.className = "event " + type;
+  div.innerHTML = "<div class='ev-icon'>" + (icons[agent] || "🤖") + "</div>" +
+    "<div><div class='ev-agent'>" + agent + "</div><div class='ev-msg'>" + msg + "</div></div>";
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+async function loadResult() {
+  if (!sessionId) return;
+  var res = await fetch("/session/" + sessionId);
+  var data = await res.json();
+
+  var tabs = document.getElementById("resultTabs");
+  var contents = document.getElementById("resultContents");
+  tabs.innerHTML = "";
+  contents.innerHTML = "";
+
+  var sections = [];
+
+  if (data.coder_output && data.coder_output.files) {
+    data.coder_output.files.forEach(function(f) {
+      sections.push({label: f.filename, content: f.content});
+    });
+  }
+  if (data.tester_output) {
+    sections.push({label: "tests.py", content: data.tester_output.test_cases.map(function(t){return t.test_code;}).join("\n\n")});
+  }
+  if (data.documenter_output) {
+    sections.push({label: "README", content: data.documenter_output.readme_section});
+  }
+
+  sections.forEach(function(s, i) {
+    var tab = document.createElement("button");
+    tab.className = "tab" + (i === 0 ? " active" : "");
+    tab.textContent = s.label;
+    tab.onclick = function() {
+      document.querySelectorAll(".tab").forEach(function(t){t.className="tab";});
+      document.querySelectorAll(".result-content").forEach(function(c){c.className="result-content";});
+      tab.className = "tab active";
+      document.getElementById("rc-" + i).className = "result-content active";
+    };
+    tabs.appendChild(tab);
+
+    var content = document.createElement("pre");
+    content.className = "result-content" + (i === 0 ? " active" : "");
+    content.id = "rc-" + i;
+    content.textContent = s.content;
+    contents.appendChild(content);
+  });
+
+  document.getElementById("resultArea").style.display = "block";
+}
+</script>
+</body>
+</html>
