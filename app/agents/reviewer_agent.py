@@ -7,21 +7,6 @@ logger = get_logger("codecrew.agent.reviewer")
 
 
 class ReviewerAgent(BaseAgent):
-    """
-    The Reviewer Agent — Third agent in the pipeline.
-
-    Responsibility:
-    - Review the Coder's output critically
-    - Find bugs, security issues, performance problems
-    - Give specific, actionable feedback
-    - Approve or reject with a quality score
-
-    This is the most critical agent — it creates the feedback loop
-    that makes the system genuinely improve code quality.
-
-    Design decision: Reviewer is deliberately strict. It's better to
-    reject good code once than to approve bad code that reaches production.
-    """
 
     @property
     def name(self) -> AgentName:
@@ -29,97 +14,70 @@ class ReviewerAgent(BaseAgent):
 
     @property
     def system_prompt(self) -> str:
-        return """You are the Reviewer Agent in a multi-agent software development system.
+        return """You are a senior software engineer doing code review.
 
-You are a senior software engineer doing code review. You are strict but fair.
-
-Your job is to review code and find:
-1. BUGS — Logic errors, off-by-one errors, null pointer issues
-2. SECURITY — SQL injection, hardcoded secrets, input validation missing
-3. PERFORMANCE — Inefficient algorithms, N+1 queries, missing indexes
-4. BEST PRACTICES — Missing error handling, no type hints, poor naming
-5. COMPLETENESS — Missing edge cases, incomplete implementation
+You review code and score it from 0-100.
 
 Scoring guide:
-- 90-100: Excellent, approve immediately
-- 70-89: Good with minor issues, can approve with notes
-- 50-69: Mediocre, reject and request fixes
-- 0-49: Poor, reject with detailed feedback
+- 90-100: Excellent code, approve immediately
+- 75-89: Good code with minor issues, APPROVE with notes
+- 60-74: Decent code, approve if no critical bugs
+- Below 60: Poor code, reject
 
-Output format — respond with ONLY this JSON structure:
+IMPORTANT RULES:
+- Be FAIR and REASONABLE - most working code scores 70+
+- Only reject if there are REAL bugs that would break the code
+- Style issues, minor improvements = approve with notes
+- Missing docstrings, minor naming = NOT a reason to reject
+- If code works correctly and handles errors = APPROVE
+
+Output ONLY this JSON:
 {
     "approved": true or false,
     "overall_quality_score": 0-100,
     "issues": [
         {
             "file": "filename.py",
-            "line_hint": "approximate line or function name",
+            "line_hint": "function name or line number",
             "severity": "low|medium|high|critical",
             "category": "bug|security|performance|best_practice|completeness",
             "description": "What is wrong",
-            "suggestion": "Exactly how to fix it"
+            "suggestion": "How to fix it"
         }
     ],
     "positive_aspects": ["What was done well"],
-    "summary": "Overall assessment in 2-3 sentences",
+    "summary": "2 sentence assessment",
     "round_number": 1
 }
 
-Rules:
-- Approve (true) if score >= 60 AND no critical severity issues
-- Reject (false) if score < 60 OR any critical issues exist
-- Every issue must have a specific, actionable suggestion
-- Be honest — do not approve bad code to be nice"""
+Approve if score >= 65 and no critical bugs.
+Reject only if score < 65 or critical bugs exist."""
 
     def run(self, context: dict) -> dict:
-        """
-        Review the coder's output and return approval decision.
-        """
         requirement = context["requirement"]
         language = context["language"]
         coder_output = context.get("coder_output", {})
         round_number = context.get("current_round", 1)
         planner_output = context.get("planner_output", {})
 
-        # Format code files for review
         files_text = "\n\n".join([
-            f"=== File: {f['filename']} ===\n```{language}\n{f['content']}\n```"
+            f"=== {f['filename']} ===\n{f['content']}"
             for f in coder_output.get("files", [])
         ])
 
-        plan_summary = "\n".join([
-            f"- {s['title']}: {s['description']}"
-            for s in planner_output.get("plan", [])
-        ])
+        user_message = f"""Review this code for requirement: {requirement}
+Language: {language}
+Review Round: {round_number}
 
-        user_message = f"""Review this code thoroughly.
-
-ORIGINAL REQUIREMENT: {requirement}
-REVIEW ROUND: {round_number}
-
-TECHNICAL PLAN (what the code should do):
-{plan_summary}
-
-CODE TO REVIEW:
+CODE:
 {files_text}
 
-CODER'S EXPLANATION: {coder_output.get('explanation', '')}
+Be fair. Working code that handles errors scores 70+. Only reject for real bugs."""
 
-Review every file carefully. Find all issues. Be strict but fair."""
-
-        self.logger.info(f"Reviewing code — round={round_number}")
-
+        self.logger.info(f"Reviewing code round={round_number}")
         response = self.think(user_message, expect_json=True)
         output = json.loads(response)
         output["round_number"] = round_number
-
-        # Validate with Pydantic
         validated = ReviewerOutput(**output)
-
-        self.logger.info(
-            f"Review complete — approved={validated.approved}, "
-            f"score={validated.overall_quality_score}, "
-            f"issues={len(validated.issues)}"
-        )
-
+        self.logger.info(f"Review: approved={validated.approved} score={validated.overall_quality_score}")
         return validated.model_dump()

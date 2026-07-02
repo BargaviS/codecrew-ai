@@ -7,19 +7,6 @@ logger = get_logger("codecrew.agent.coder")
 
 
 class CoderAgent(BaseAgent):
-    """
-    The Coder Agent — Second agent in the pipeline.
-
-    Responsibility:
-    - Read the Planner's technical plan
-    - Write clean, production-grade code
-    - Follow all coding standards
-    - Fix issues when Reviewer rejects the code
-
-    Design decision: Coder always reads the Reviewer's feedback
-    when rewriting — it doesn't start fresh, it improves the existing code.
-    This mirrors how real developers handle code review.
-    """
 
     @property
     def name(self) -> AgentName:
@@ -27,45 +14,37 @@ class CoderAgent(BaseAgent):
 
     @property
     def system_prompt(self) -> str:
-        return """You are the Coder Agent in a multi-agent software development system.
+        return """You are an expert software engineer. Write clean, working code.
 
-Your job is to write clean, production-grade code based on the Planner's technical plan.
+STRICT JSON RULES:
+- Return ONLY valid JSON
+- NEVER use triple quotes inside JSON strings
+- Use single line # comments only, never docstrings
+- Escape all special characters in strings
+- Use \n for newlines inside JSON strings
 
-Coding standards you MUST follow:
-1. Type hints on ALL functions and methods
-2. Docstrings on ALL classes and functions
-3. Proper error handling with try/except where needed
-4. No hardcoded values — use constants or config
-5. Meaningful variable and function names
-6. Single responsibility principle — each function does ONE thing
-7. Input validation where user data is involved
-8. Proper imports organized (stdlib → third-party → local)
-
-Output format — respond with ONLY this JSON structure:
+Output ONLY this JSON:
 {
     "files": [
         {
             "filename": "main.py",
-            "content": "# Complete file content here",
-            "description": "What this file does"
+            "content": "# complete file content here as single line string",
+            "description": "what this file does"
         }
     ],
-    "explanation": "Brief explanation of implementation decisions",
-    "assumptions_made": ["Assumption 1", "Assumption 2"]
+    "explanation": "brief explanation",
+    "assumptions_made": ["assumption 1"]
 }
 
-Rules:
-- CRITICAL: Never use triple quotes in code, use single line comments for docstrings
-- Write COMPLETE files — never truncate with comments like "# rest of code here"
-- Handle ALL edge cases mentioned in the plan
-- If fixing reviewer feedback, address EVERY issue mentioned
-- Code must be immediately runnable — no placeholders"""
+Code standards:
+- Add type hints on all functions
+- Add error handling with try/except
+- Validate inputs
+- Handle edge cases
+- Write clean readable code
+- NEVER truncate code with comments like rest of code here"""
 
     def run(self, context: dict) -> dict:
-        """
-        Write code based on the plan. If reviewer feedback exists,
-        fix the issues in the existing code.
-        """
         requirement = context["requirement"]
         language = context["language"]
         planner_output = context.get("planner_output", {})
@@ -73,70 +52,51 @@ Rules:
         previous_code = context.get("coder_output")
         round_number = context.get("current_round", 1)
 
-        if reviewer_feedback and previous_code:
-            # This is a fix round — reviewer rejected the code
-            self.logger.info(f"Fix round {round_number} — addressing reviewer feedback")
-
+        if reviewer_feedback and previous_code and round_number > 1:
             issues = reviewer_feedback.get("issues", [])
             issues_text = "\n".join([
-                f"- [{i['severity'].upper()}] {i['file']} line {i['line_hint']}: "
-                f"{i['description']} → Fix: {i['suggestion']}"
+                f"- {i['severity'].upper()} in {i['file']}: {i['description']} -> Fix: {i['suggestion']}"
                 for i in issues
             ])
 
             previous_files = "\n\n".join([
-                f"File: {f['filename']}\n```{language}\n{f['content']}\n```"
+                f"File: {f['filename']}\n{f['content']}"
                 for f in previous_code.get("files", [])
             ])
 
-            user_message = f"""TASK: Fix the code based on reviewer feedback.
+            user_message = f"""Fix this code based on reviewer feedback.
 
-ORIGINAL REQUIREMENT: {requirement}
+REQUIREMENT: {requirement}
 
-YOUR PREVIOUS CODE:
+PREVIOUS CODE:
 {previous_files}
 
-REVIEWER REJECTION REASON:
-{reviewer_feedback.get('summary', '')}
-
-SPECIFIC ISSUES TO FIX:
+ISSUES TO FIX:
 {issues_text}
 
-Fix ALL issues listed above. Keep working code unchanged. Return complete fixed files."""
+Fix ALL issues. Return complete fixed files. No placeholders."""
 
         else:
-            # First round — write code from scratch
-            self.logger.info("Round 1 — writing code from plan")
-
             plan_steps = planner_output.get("plan", [])
             plan_text = "\n".join([
-                f"Step {s['step_number']}: {s['title']}\n  {s['description']}\n  Files: {', '.join(s['files_to_create'])}"
+                f"Step {s['step_number']}: {s['title']} - {s['description']}"
                 for s in plan_steps
             ])
 
-            tech_stack = ", ".join(planner_output.get("tech_stack", []))
-
-            user_message = f"""TASK: Write production-grade code for this requirement.
+            user_message = f"""Write production code for this requirement.
 
 REQUIREMENT: {requirement}
 LANGUAGE: {language}
-TECH STACK: {tech_stack}
+TECH STACK: {', '.join(planner_output.get('tech_stack', []))}
 
-TECHNICAL PLAN:
+PLAN:
 {plan_text}
 
-Write complete, runnable code following all coding standards."""
+Write complete, working code. No placeholders."""
 
+        self.logger.info(f"Coding round={round_number}")
         response = self.think(user_message, expect_json=True)
         output = json.loads(response)
-
-        # Validate with Pydantic
         validated = CoderOutput(**output)
-
-        self.logger.info(
-            f"Code written — {len(validated.files)} files, "
-            f"round={round_number}"
-        )
-
+        self.logger.info(f"Code written: {len(validated.files)} files round={round_number}")
         return validated.model_dump()
-# patch applied below in class

@@ -1,5 +1,4 @@
 import json
-import re
 from groq import Groq
 from app.core.config import get_settings
 from app.core.logger import get_logger
@@ -21,12 +20,11 @@ class LLMClient:
     def chat(self, system_prompt: str, user_message: str, expect_json: bool = False) -> str:
         if expect_json:
             system_prompt += (
-                "\n\nCRITICAL JSON RULES:"
-                "\n1. Respond with ONLY valid JSON — no markdown, no backticks"
-                "\n2. NEVER use triple quotes (\"\"\" or ''') inside JSON strings"
-                "\n3. Use single line comments (#) instead of docstrings"
-                "\n4. Escape all special characters in strings"
-                "\n5. The response must be parseable by json.loads()"
+                "\n\nCRITICAL: Return ONLY a valid JSON object."
+                "\nDo NOT write any code or text outside the JSON."
+                "\nDo NOT use triple quotes inside JSON."
+                "\nUse \\n for newlines in code strings."
+                "\nThe entire response must start with { and end with }"
             )
 
         messages = [
@@ -34,38 +32,46 @@ class LLMClient:
             {"role": "user", "content": user_message},
         ]
 
-        logger.info(f"LLM call — expect_json={expect_json}")
+        # Try up to 3 times
+        for attempt in range(3):
+            logger.info(f"LLM call attempt {attempt+1}")
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+            )
+            content = response.choices[0].message.content.strip()
 
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            max_tokens=self.max_tokens,
-            temperature=self.temperature,
-        )
+            if not expect_json:
+                return content
 
-        content = response.choices[0].message.content.strip()
-
-        if expect_json:
-            # Remove markdown code blocks if present
+            # Clean up common issues
+            # Remove markdown code blocks
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0].strip()
-            elif content.startswith("```"):
-                lines = content.split("\n")
-                content = "\n".join(lines[1:-1]).strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
 
-            # Try to parse — if fails, attempt cleanup
+            # Remove any text before first {
+            if "{" in content:
+                content = content[content.index("{"):]
+
+            # Remove any text after last }
+            if "}" in content:
+                content = content[:content.rindex("}")+1]
+
             try:
                 json.loads(content)
+                return content
             except json.JSONDecodeError as e:
-                logger.warning(f"JSON parse failed, attempting cleanup: {e}")
-                # Remove triple quotes
-                content = content.replace('"""', '"')
-                content = content.replace("'''", "'")
-                try:
-                    json.loads(content)
-                except json.JSONDecodeError as e2:
-                    logger.error(f"JSON cleanup failed: {e2}")
-                    raise ValueError(f"LLM returned invalid JSON: {e2}\nContent: {content[:300]}")
+                logger.warning(f"Attempt {attempt+1} JSON failed: {e}")
+                if attempt < 2:
+                    # Ask again with stronger instruction
+                    messages.append({"role": "assistant", "content": content})
+                    messages.append({"role": "user", "content": "Your response was not valid JSON. Return ONLY the JSON object starting with { and ending with }. No other text."})
+                    continue
+                raise ValueError(f"LLM failed to return valid JSON after 3 attempts: {e}")
 
         return content
 
