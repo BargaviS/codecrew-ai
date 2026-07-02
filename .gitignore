@@ -1,0 +1,10 @@
+.venv/
+.env
+.env.*
+data/
+__pycache__/
+*.pyc
+*.pyo
+.python-version
+*.bin
+*.sqlite3
