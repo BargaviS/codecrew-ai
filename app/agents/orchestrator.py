@@ -60,9 +60,11 @@ class Orchestrator:
         """
         sm = self.session_manager
         sm.update_status(session_id, SessionStatus.RUNNING)
+        current_agent = AgentName.PLANNER  # tracks who's running, for accurate error messages
 
         try:
             # ── Step 1: Planner ──────────────────────────────────────────
+            current_agent = AgentName.PLANNER
             yield self._event("agent_start", AgentName.PLANNER, "Analyzing requirements and creating technical plan...")
 
             planner_output = await asyncio.to_thread(
@@ -83,6 +85,7 @@ class Orchestrator:
                 context["current_round"] = round_num
 
                 # Coder writes/fixes code
+                current_agent = AgentName.CODER
                 if round_num == 1:
                     yield self._event("agent_start", AgentName.CODER, f"Writing code (Round {round_num})...")
                 else:
@@ -99,6 +102,7 @@ class Orchestrator:
                 self._log_message(session_id, AgentName.CODER, "output", f"Round {round_num}: Wrote {files_written} files")
 
                 # Reviewer reviews
+                current_agent = AgentName.REVIEWER
                 yield self._event("agent_start", AgentName.REVIEWER, f"Reviewing code quality (Round {round_num})...")
 
                 reviewer_output = await asyncio.to_thread(
@@ -140,6 +144,7 @@ class Orchestrator:
                         sm.update_scores(session_id, initial=initial_score, final=final_score, rounds=round_num)
 
             # ── Step 4: Tester ───────────────────────────────────────────
+            current_agent = AgentName.TESTER
             yield self._event("agent_start", AgentName.TESTER, "Writing comprehensive unit tests...")
 
             tester_output = await asyncio.to_thread(
@@ -153,6 +158,7 @@ class Orchestrator:
             self._log_message(session_id, AgentName.TESTER, "output", f"Wrote {tests_count} test cases")
 
             # ── Step 5: Documenter ───────────────────────────────────────
+            current_agent = AgentName.DOCUMENTER
             yield self._event("agent_start", AgentName.DOCUMENTER, "Writing documentation...")
 
             documenter_output = await asyncio.to_thread(
@@ -178,7 +184,7 @@ class Orchestrator:
         except Exception as e:
             logger.error(f"Session {session_id} failed: {e}")
             sm.update_status(session_id, SessionStatus.FAILED)
-            yield self._event("error", AgentName.PLANNER, f"Pipeline failed: {str(e)}")
+            yield self._event("error", current_agent, f"Pipeline failed: {str(e)}")
 
     def _event(self, event_type: str, agent: AgentName, message: str, data: dict = None) -> dict:
         """Create a structured SSE event."""

@@ -3,6 +3,7 @@ import uuid
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
+from functools import lru_cache
 
 from app.core.config import get_settings
 from app.core.logger import get_logger
@@ -97,10 +98,12 @@ class SessionManager:
         for path in self.session_dir.glob("*.json"):
             with open(path) as f:
                 data = json.load(f)
+                requirement = data["requirement"]
+                truncated = requirement[:60] + ("..." if len(requirement) > 60 else "")
                 sessions.append({
                     "session_id": data["session_id"],
                     "status": data["status"],
-                    "requirement": data["requirement"][:60] + "...",
+                    "requirement": truncated,
                     "created_at": data.get("created_at", ""),
                     "language": data.get("language", ""),
                 })
@@ -113,8 +116,6 @@ class SessionManager:
         with open(self._path(session_id), "w") as f:
             json.dump(data, f, indent=2)
 
-
-from functools import lru_cache
 
 @lru_cache()
 def get_session_manager() -> SessionManager:

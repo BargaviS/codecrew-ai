@@ -1,4 +1,5 @@
 import json
+from functools import lru_cache
 from groq import Groq
 from app.core.config import get_settings
 from app.core.logger import get_logger
@@ -75,8 +76,6 @@ class LLMClient:
 
         return content
 
-
-from functools import lru_cache
 
 @lru_cache()
 def get_llm_client() -> LLMClient:

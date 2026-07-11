@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY --chown=user . .
 
-RUN mkdir -p data/sessions data/codebase data/chroma
+RUN mkdir -p data/sessions data/codebase
 
 EXPOSE 7860
 

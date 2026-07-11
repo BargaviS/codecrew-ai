@@ -60,7 +60,7 @@ def create_session(request: SessionRequest):
 
 
 @router.get("/session/{session_id}/stream", tags=["Sessions"])
-async def stream_session(session_id: str, requirement: str, language: str = "python", framework: str = "", additional_context: str = ""):
+async def stream_session(session_id: str, framework: str = "", additional_context: str = ""):
     """
     Stream agent outputs in real-time using Server-Sent Events.
 
@@ -73,9 +73,11 @@ async def stream_session(session_id: str, requirement: str, language: str = "pyt
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
+    # Use the requirement/language saved when the session was created —
+    # not re-accepted here — so the two can never disagree with each other.
     context = {
-        "requirement": requirement,
-        "language": language,
+        "requirement": session["requirement"],
+        "language": session["language"],
         "framework": framework,
         "additional_context": additional_context,
     }

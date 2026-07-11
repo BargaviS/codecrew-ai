@@ -18,7 +18,6 @@ class Settings(BaseSettings):
     # Storage paths
     SESSION_DIR: str = "data/sessions"
     CODEBASE_DIR: str = "data/codebase"
-    CHROMA_DIR: str = "data/chroma"
 
     class Config:
         env_file = ".env"
