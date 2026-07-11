@@ -214,8 +214,7 @@ Open **http://localhost:8000**
 
 **Bargavi S** — Aspiring GenAI Engineer
 
-> *"Most people use AI tools. I built the system that coordinates AI agents to work together — each specialized, each accountable, each improving the other's output."*
-
+> *"I built this to understand how AI agents can coordinate on real engineering work — planning, coding, reviewing, testing, and documenting — with each agent accountable for its part and able to send work back for revision."*
 ---
 
 ## 📄 License
