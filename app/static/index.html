@@ -168,9 +168,8 @@ async function runAgents() {
   document.getElementById("statusBar").textContent = "Session " + sessionId + " — Agents running...";
 
   // Stream events
-  var url = "/session/" + sessionId + "/stream?requirement=" + encodeURIComponent(req) +
-    "&language=" + document.getElementById("lang").value +
-    "&framework=" + encodeURIComponent(document.getElementById("framework").value || "");
+  var url = "/session/" + sessionId + "/stream?framework=" +
+    encodeURIComponent(document.getElementById("framework").value || "");
 
   var evtSource = new EventSource(url);
 
