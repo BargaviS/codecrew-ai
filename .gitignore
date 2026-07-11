@@ -10,3 +10,5 @@ __pycache__/
 *.bin
 __pycache__/
 *.pyc
+.env.save*
+.env.*.save
