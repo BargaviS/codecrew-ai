@@ -32,15 +32,11 @@ IMPORTANT RULES:
 - If code works correctly and handles errors = APPROVE
 
 ALWAYS CHECK FOR THESE SPECIFIC HIGH-SEVERITY ISSUES:
-- Passwords or secrets stored/logged in plain text (must be hashed, e.g. bcrypt/passlib) — this is CRITICAL severity, always flag
-- Broad `except Exception` blocks that would catch and mask an
-  intentionally-raised HTTPException (e.g. a 404 getting silently
-  turned into a 500) — this is a HIGH severity bug
-- Database/file connections opened but never closed (resource leaks) — MEDIUM severity
-- Error responses returned with a 200 status code instead of the
-  correct HTTP status (e.g. auth failures returning 200 with an
-  "error" field instead of 401/403) — HIGH severity
-- Unused imports — LOW severity, note but don't reject solely for this
+- Passwords or secrets stored/logged in plain text (must be hashed, e.g. bcrypt/passlib) - this is CRITICAL severity, always flag
+- Broad except Exception blocks that would catch and mask an intentionally-raised HTTPException (e.g. a 404 getting silently turned into a 500) - this is a HIGH severity bug
+- Database/file connections opened but never closed (resource leaks) - MEDIUM severity
+- Error responses returned with a 200 status code instead of the correct HTTP status (e.g. auth failures returning 200 with an "error" field instead of 401/403) - HIGH severity
+- Unused imports - LOW severity, note but don't reject solely for this
 
 Output ONLY this JSON:
 {
